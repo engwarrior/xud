@@ -318,11 +318,14 @@ class Pool extends EventEmitter {
       // if allowKnown is false, allow nodes that we don't aware of
       const isAllowed = allowKnown || !this.nodes.has(node.nodePubKey);
 
+      // Check if we have banned the node.
+      const notBanned = this.nodes.isBanned(node.nodePubKey);
+
       // Check if we are banned by the node.
       const notBannedBy = !this.nodes.isBannedBy(node.nodePubKey);
 
       // determine whether we should attempt to connect
-      if (isNotUs && hasAddresses && isAllowed && notBannedBy) {
+      if (isNotUs && hasAddresses && isAllowed && notBanned && notBannedBy) {
         connectionPromises.push(this.tryConnectNode(node, retryConnecting));
       }
     });
@@ -413,6 +416,10 @@ class Pool extends EventEmitter {
 
     if (this.nodes.isBanned(nodePubKey)) {
       throw errors.NODE_IS_BANNED(nodePubKey);
+    }
+
+    if (this.nodes.isBannedBy(nodePubKey)) {
+      throw errors.BANNED_BY_NODE(nodePubKey);
     }
 
     if (this.peers.has(nodePubKey)) {
@@ -586,10 +593,9 @@ class Pool extends EventEmitter {
     }
 
     // Check if peer has previously banned us, if so set `bannedBy` to false
-    const node = this.nodes.getNode(peerPubKey);
-    if (node && node.bannedBy) {
+    if (this.nodes.isBannedBy(peerPubKey)) {
       await this.nodes.setBannedBy(peerPubKey, false);
-      this.logger.info(`Peer: ${peerPubKey} has unbanned us`);
+      this.logger.info(`Peer ${peer.label} has unbanned us`);
     }
   }
 
@@ -901,7 +907,7 @@ class Pool extends EventEmitter {
 
     peer.on('bannedBy', async (nodePubKey: string) => {
       // set peer as banning us
-      await this.nodes.setBannedBy(nodePubKey);
+      await this.nodes.setBannedBy(nodePubKey, true);
       this.logger.info(`Peer: ${nodePubKey} has banned us`);
     });
 
