@@ -29,6 +29,7 @@ interface NodeList {
 class NodeList extends EventEmitter {
   private nodes = new Map<string, NodeInstance>();
   private bannedNodes = new Map<string, NodeInstance>();
+  private nodesBannedBy = new Set<string>();
 
   private static readonly BAN_THRESHOLD = -50;
 
@@ -41,6 +42,26 @@ class NodeList extends EventEmitter {
   }
 
   /**
+   * Checks if we are banned by this node
+   */
+  public isBannedBy = (nodePubKey: string): boolean => {
+    return this.nodesBannedBy.has(nodePubKey);
+  }
+
+  /**
+   * Adds or removes a node to the set of nodes that have banned us.
+   */
+  public setBannedBy = (nodePubKey: string, bannedBy = true) => {
+    if (bannedBy) {
+      this.nodesBannedBy.add(nodePubKey);
+    } else {
+      this.nodesBannedBy.delete(nodePubKey);
+    }
+
+    return this.repository.updateBannedBy(nodePubKey, bannedBy);
+  }
+
+  /**
    * Check if a node with a given nodePubKey exists.
    */
   public has = (nodePubKey: string): boolean => {
@@ -49,6 +70,10 @@ class NodeList extends EventEmitter {
 
   public forEach = (callback: (node: NodeInstance) => void) => {
     this.nodes.forEach(callback);
+  }
+
+  public getNode(nodePubKey: string): NodeInstance | undefined {
+    return this.nodes.get(nodePubKey);
   }
 
   /**
@@ -81,6 +106,8 @@ class NodeList extends EventEmitter {
     nodes.forEach((node) => {
       if (node.banned) {
         this.bannedNodes.set(node.nodePubKey, node);
+      } else if (node.bannedBy) {
+        this.nodesBannedBy.add(node.nodePubKey);
       } else {
         this.nodes.set(node.nodePubKey, node);
         const reputationLoadPromise = this.repository.getReputationEvents(node).then((events) => {

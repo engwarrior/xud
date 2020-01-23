@@ -81,6 +81,7 @@ export type NodeFactory = NodeConnectionInfo;
 export type NodeAttributes = NodeFactory & {
   id: number;
   banned: boolean;
+  bannedBy: boolean;
   addressesText: string;
   lastAddressText: string;
   lastAddress: Address;

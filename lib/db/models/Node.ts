@@ -6,13 +6,14 @@ export default (sequelize: Sequelize.Sequelize, DataTypes: Sequelize.DataTypes) 
   const attributes: db.SequelizeAttributes<db.NodeAttributes> = {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     nodePubKey: { type: DataTypes.STRING, unique: true, allowNull: false },
-    addressesText: { type: Sequelize.TEXT, allowNull: false },
+    addressesText: { type: Sequelize.TEXT, allowNull: false, defaultValue: '[]' },
+    bannedBy: { type: Sequelize.BOOLEAN, allowNull: true },
     addresses: {
       type: Sequelize.VIRTUAL,
       get(this: db.NodeInstance) {
         return JSON.parse(this.addressesText);
       },
-      set(this: db.NodeInstance, value: Address[]) {
+      set(this: db.NodeInstance, value?: Address[]) {
         if (value) {
           this.setDataValue('addressesText', JSON.stringify(value));
         } else {
