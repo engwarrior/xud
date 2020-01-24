@@ -296,9 +296,9 @@ class Service {
   /**
    * Gets information about a specified node.
    */
-  public getNodeInfo = async (args: { nodePubKey: string }) => {
+  public getNodeInfo = (args: { nodePubKey: string }) => {
     argChecks.HAS_NODE_PUB_KEY(args);
-    const info = await this.pool.getNodeReputation(args.nodePubKey);
+    const info = this.pool.getNodeReputation(args.nodePubKey);
     return info;
   }
 

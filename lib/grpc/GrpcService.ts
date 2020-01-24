@@ -480,7 +480,7 @@ class GrpcService {
       return;
     }
     try {
-      const { banned, reputationScore } = await this.service.getNodeInfo(call.request.toObject());
+      const { banned, reputationScore } = this.service.getNodeInfo(call.request.toObject());
       const response = new xudrpc.GetNodeInfoResponse();
       if (banned) {
         response.setBanned(banned);

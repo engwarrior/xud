@@ -2,8 +2,14 @@ import { EventEmitter } from 'events';
 import { ReputationEvent } from '../constants/enums';
 import { NodeFactory, NodeInstance, ReputationEventInstance } from '../db/types';
 import addressUtils from '../utils/addressUtils';
+import errors from './errors';
 import P2PRepository from './P2PRepository';
-import { Address } from './types';
+import { Address, NodeConnectionInfo } from './types';
+
+type NodeReputation = {
+  reputationScore: number;
+  banned?: boolean;
+};
 
 export const reputationEventWeight = {
   [ReputationEvent.ManualBan]: Number.NEGATIVE_INFINITY,
@@ -52,8 +58,13 @@ class NodeList extends EventEmitter {
   /**
    * Persists whether a node has banned us.
    */
-  public setBannedBy = (nodePubKey: string, bannedBy: boolean) => {
-    return this.repository.updateBannedBy(nodePubKey, bannedBy);
+  public setBannedBy = async (nodePubKey: string, bannedBy: boolean) => {
+    const node = this.nodes.get(nodePubKey);
+    if (!node) {
+      throw errors.NODE_UNKNOWN(nodePubKey);
+    }
+    node.bannedBy = bannedBy;
+    await this.save(node);
   }
 
   /**
@@ -67,29 +78,53 @@ class NodeList extends EventEmitter {
     this.nodes.forEach(callback);
   }
 
-  public getNode(nodePubKey: string): NodeInstance | undefined {
-    return this.nodes.get(nodePubKey);
-  }
-
   /**
    * Bans a node by nodePubKey.
-   * @returns true if the node was banned, false otherwise
    */
-  public ban = async (nodePubKey: string): Promise<boolean> => {
-    return this.addReputationEvent(nodePubKey, ReputationEvent.ManualBan);
+  public ban = async (nodePubKey: string) => {
+    await this.addReputationEvent(nodePubKey, ReputationEvent.ManualBan);
   }
 
   /**
-   * Remove ban from node by nodePubKey.
-   * @returns true if ban was removed, false otherwise
+   * Unbans a node by nodePubKey.
    */
-  public unBan = async (nodePubKey: string): Promise<boolean> => {
-    return this.addReputationEvent(nodePubKey, ReputationEvent.ManualUnban);
+  public unBan = async (nodePubKey: string) => {
+    await this.addReputationEvent(nodePubKey, ReputationEvent.ManualUnban);
   }
 
   public isBanned = (nodePubKey: string): boolean => {
     const node = this.nodes.get(nodePubKey);
     return node ? node.banned : false;
+  }
+
+  /**
+   * Gets a node's reputation score and whether it is banned
+   * @param nodePubKey The node pub key of the node for which to get reputation information
+   */
+  public getNodeReputation = (nodePubKey: string): NodeReputation => {
+    const node = this.nodes.get(nodePubKey);
+    if (node) {
+      const { reputationScore, banned } = node;
+      return {
+        reputationScore,
+        banned,
+      };
+    } else {
+      throw errors.NODE_UNKNOWN(nodePubKey);
+    }
+  }
+
+  public getNodeConnectionInfo = (nodePubKey: string): NodeConnectionInfo => {
+    const node = this.nodes.get(nodePubKey);
+    if (node) {
+      return {
+        nodePubKey,
+        addresses: node.addresses,
+        lastAddress: node.lastAddress,
+      };
+    } else {
+      throw errors.NODE_UNKNOWN(nodePubKey);
+    }
   }
 
   /**
@@ -151,9 +186,8 @@ class NodeList extends EventEmitter {
 
   /**
    * Add a reputation event to the node's history
-   * @return true if the specified node exists and the event was added, false otherwise
    */
-  public addReputationEvent = async (nodePubKey: string, event: ReputationEvent): Promise<boolean> => {
+  public addReputationEvent = async (nodePubKey: string, event: ReputationEvent) => {
     const node = this.nodes.get(nodePubKey);
 
     if (node) {
@@ -173,13 +207,10 @@ class NodeList extends EventEmitter {
         this.emit('node.unban', nodePubKey);
       }
 
-      await Promise.all(promises);
-
-      return true;
       await addReputationEventPromise;
+    } else {
+      throw errors.NODE_UNKNOWN(nodePubKey);
     }
-
-    return false;
   }
 
   public removeAddress = async (nodePubKey: string, address: Address) => {

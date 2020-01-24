@@ -9,14 +9,6 @@ class P2PRepository {
     return this.models.Node.findAll();
   }
 
-  public getNode = async (nodePubKey: string): Promise<NodeInstance | null> => {
-    return this.models.Node.findOne({
-      where: {
-        nodePubKey,
-      },
-    });
-  }
-
   public getReputationEvents = async (node: NodeInstance): Promise<ReputationEventInstance[]> => {
     return this.models.ReputationEvent.findAll({
       where: {
@@ -48,14 +40,6 @@ class P2PRepository {
 
   public addNodes = async (nodes: NodeFactory[]) => {
     return this.models.Node.bulkCreate(<NodeAttributes[]>nodes);
-  }
-
-  public updateBannedBy = async (nodePubKey: string, bannedBy: boolean) => {
-    return this.models.Node.update({ bannedBy }, {
-      where: {
-        nodePubKey,
-      },
-    });
   }
 }
 

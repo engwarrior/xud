@@ -84,7 +84,7 @@ describe('P2P Pool Tests', async () => {
     const banPromise = pool.banNode(nodeKeyOne.pubKey);
     expect(banPromise).to.be.fulfilled;
     await banPromise;
-    const nodeReputationPromise = await pool.getNodeReputation(nodeKeyOne.pubKey);
+    const nodeReputationPromise = pool.getNodeReputation(nodeKeyOne.pubKey);
     expect(nodeReputationPromise.banned).to.be.true;
   });
 
@@ -92,7 +92,7 @@ describe('P2P Pool Tests', async () => {
     const unbanPromise = pool.unbanNode(nodeKeyOne.pubKey, false);
     expect(unbanPromise).to.be.fulfilled;
     await unbanPromise;
-    const nodeReputationPromise = await pool.getNodeReputation(nodeKeyOne.pubKey);
+    const nodeReputationPromise = pool.getNodeReputation(nodeKeyOne.pubKey);
     expect(nodeReputationPromise.banned).to.be.false;
   });
 
