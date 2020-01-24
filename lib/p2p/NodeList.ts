@@ -21,7 +21,9 @@ export const reputationEventWeight = {
 
 interface NodeList {
   on(event: 'node.ban', listener: (nodePubKey: string, events: ReputationEventInstance[]) => void): this;
+  on(event: 'node.unban', listener: (nodePubKey: string) => void): this;
   emit(event: 'node.ban', nodePubKey: string, events: ReputationEventInstance[]): boolean;
+  emit(event: 'node.unban', nodePubKey: string): boolean;
 }
 
 /** A wrapper class with help methods that represents a list of known nodes. */
@@ -168,6 +170,7 @@ class NodeList extends EventEmitter {
         // If the reputationScore is not below the banThreshold but node.banned
         // is true that means that the node was unbanned
         await this.setBanned(node, false);
+        this.emit('node.unban', nodePubKey);
       }
 
       await Promise.all(promises);

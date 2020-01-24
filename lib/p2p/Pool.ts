@@ -263,7 +263,7 @@ class Pool extends EventEmitter {
 
   private bindNodeList = () => {
     this.nodes.on('node.ban', (nodePubKey: string, events: ReputationEventInstance[]) => {
-      this.logger.warn(`node ${nodePubKey} was banned`);
+      this.logger.info(`node ${nodePubKey} was banned`);
 
       const peer = this.peers.get(nodePubKey);
       if (peer) {
@@ -271,6 +271,9 @@ class Pool extends EventEmitter {
         return peer.close(DisconnectionReason.Banned, JSON.stringify(lastNegativeEvents));
       }
       return;
+    });
+    this.nodes.on('node.unban', (nodePubKey: string) => {
+      this.logger.info(`node ${nodePubKey} was unbanned`);
     });
   }
 
