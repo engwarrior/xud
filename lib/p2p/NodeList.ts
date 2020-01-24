@@ -142,7 +142,7 @@ class NodeList extends EventEmitter {
         node.lastAddress = lastAddress;
       }
 
-      await node.save();
+      await this.save(node);
       return true;
     }
 
@@ -188,7 +188,7 @@ class NodeList extends EventEmitter {
       const index = node.addresses.findIndex(existingAddress => addressUtils.areEqual(address, existingAddress));
       if (index > -1) {
         node.addresses = [...node.addresses.slice(0, index), ...node.addresses.slice(index + 1)];
-        await node.save();
+        await this.save(node);
         return true;
       }
 
@@ -199,6 +199,11 @@ class NodeList extends EventEmitter {
     }
 
     return false;
+  }
+
+  private save = async (node: NodeInstance) => {
+    await node.save();
+    this.nodes.set(node.nodePubKey, node);
   }
 
   private updateReputationScore = (node: NodeInstance, event: ReputationEvent) => {
@@ -214,7 +219,7 @@ class NodeList extends EventEmitter {
 
   private setBanned = async (node: NodeInstance, banned: boolean) => {
     node.banned = banned;
-    await node.save();
+    await this.save(node);
   }
 }
 
