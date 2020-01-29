@@ -10,6 +10,7 @@ import {
   defaultCurrencies,
   defaultPairs,
 } from '../db/seeds';
+import migrations from './migrations';
 
 type Models = {
   Node: Sequelize.Model<db.NodeInstance, db.NodeAttributes>;
@@ -20,6 +21,8 @@ type Models = {
   Order: Sequelize.Model<db.OrderInstance, db.OrderAttributes>;
   Trade: Sequelize.Model<db.TradeInstance, db.TradeAttributes>;
 };
+
+const DB_VERSION = 1;
 
 /** A class representing a connection to a SQL database. */
 class DB {
@@ -44,7 +47,8 @@ class DB {
    */
   public init = async (network = XuNetwork.SimNet, initDb = false): Promise<void> => {
     this.models = await this.loadModels();
-    const shouldInitDb = initDb && await this.isNewDb();
+    const isNewDb = await this.isNewDb();
+    const shouldInitDb = initDb && isNewDb;
 
     try {
       await this.sequelize.authenticate();
@@ -53,12 +57,33 @@ class DB {
       this.logger.error('unable to connect to the database', err);
       throw err;
     }
+
+    if (isNewDb) {
+      await this.sequelize.query(`PRAGMA user_version=${DB_VERSION};`);
+    }
+
+    // version is useful for tracking migrations & upgrades to the xud database when
+    // the database schema is modified or restructured
+    const version = (await this.sequelize.query('PRAGMA user_version;'))[0][0].user_version;
+    this.logger.trace(`db version is ${version}`);
+    if (version <= DB_VERSION) {
+      // if our db is not the latest version, we call each migration procedure necessary
+      // to bring us from our current version up to the latest version.
+      for (let n = version; n < DB_VERSION; n += 1) {
+        this.logger.info(`migrating db from version ${n} to version ${n + 1}`);
+        await migrations[n](this.sequelize);
+        await this.sequelize.query(`PRAGMA user_version=${n + 1};`);
+        this.logger.info(`migration to version ${n + 1} complete`);
+      }
+    }
+
     const { Node, Currency, Pair, ReputationEvent, SwapDeal, Order, Trade } = this.models;
     // sync schemas with the database in phases, according to FKs dependencies
     await Promise.all([
       Node.sync(),
       Currency.sync(),
     ]);
+
     // Pair is dependent on Currency, ReputationEvent is dependent on Node
     await Promise.all([
       Pair.sync(),
